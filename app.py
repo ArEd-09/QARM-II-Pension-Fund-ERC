@@ -328,9 +328,8 @@ def perform_optimization(
     tc_rate: float = 0.001,
 ):
 
-
     try:
-        # Convert dates
+        # 0) Dates propres
         start_date_user = pd.to_datetime(start_date_user)
         end_date_user   = pd.to_datetime(end_date_user)
 
@@ -339,15 +338,14 @@ def perform_optimization(
             return None
 
         # --------------------------------------------------
-        # 1) Determine real common start date
+        # 1) Date commune de début (toutes séries ont un return)
         # --------------------------------------------------
         common_start = get_common_start_date(custom_data, selected_assets, start_date_user)
         if common_start is None:
             return None
 
         # --------------------------------------------------
-        # 2) Real possible beginning of optimization:
-        #    common_start + 36 months of lookback
+        # 2) Première date possible d'optimisation = commune + lookback
         # --------------------------------------------------
         first_rebalance_date = common_start + pd.DateOffset(months=lookback_months)
 
@@ -367,20 +365,29 @@ def perform_optimization(
             )
 
         # --------------------------------------------------
-        # 3) Slice data from the first possible rebalance date
+        # 3) Données complètes pour l'estimation (full_returns)
+        #    + données pour le backtest (period_returns)
         # --------------------------------------------------
-        returns_all = custom_data[selected_assets].sort_index()
+        full_returns = custom_data[selected_assets].sort_index()
+        full_returns = full_returns.loc[common_start:end_date_user]
 
-        # Keep only data from first_rebalance_date to end_date_user
-        returns_all = returns_all.loc[first_rebalance_date:end_date_user]
-        if returns_all.empty:
+        if full_returns.shape[0] < lookback_months + 1:
+            st.error(
+                f"Not enough total history to have {lookback_months} months of data "
+                f"between {common_start.date()} and {end_date_user.date()}."
+            )
+            return None
+
+        # Série qu'on utilise pour construire le portefeuille
+        period_returns = full_returns.loc[first_rebalance_date:end_date_user]
+        if period_returns.empty:
             st.error("No available return data after earliest optimisation date.")
             return None
 
-        period_dates = returns_all.index
+        period_dates = period_returns.index
 
         # --------------------------------------------------
-        # 4) Build rebalance schedule (0 = first_rebalance_date)
+        # 4) Dates de rebalancement (indices dans period_dates)
         # --------------------------------------------------
         rebalance_indices = compute_rebalance_indices(period_dates, rebalance_freq)
 
@@ -390,20 +397,22 @@ def perform_optimization(
         weights_over_time = {}
         total_tc = 0.0
 
+        last_cov = None  # pour RC à la fin
+
         # --------------------------------------------------
-        # 5) Rolling optimisation loop
+        # 5) Boucle de rebalancement ERC
         # --------------------------------------------------
         for j, reb_idx in enumerate(rebalance_indices):
 
             rebal_date = period_dates[reb_idx]
 
-            # Determine the estimation window
-            end_pos = returns_all.index.get_loc(rebal_date)
-            start_pos = max(0, end_pos - lookback_months)
+            # Position globale de cette date dans full_returns
+            global_reb_pos = full_returns.index.get_loc(rebal_date)
+            start_pos = max(0, global_reb_pos - lookback_months)
 
-            est_window = returns_all.iloc[start_pos:end_pos]
+            # Fenêtre d'estimation sur full_returns, pas period_returns
+            est_window = full_returns.iloc[start_pos:global_reb_pos]
 
-            # Clean estimation window
             est_window = est_window.dropna(how="all")
             est_window = est_window.dropna(how="any")
 
@@ -414,29 +423,30 @@ def perform_optimization(
                 )
                 return None
 
-            # Covariance estimation (ann_factor for annualization)
+            # Covariance (annualisée)
             lw = LedoitWolf().fit(est_window.values)
             cov = lw.covariance_ * ann_factor
+            last_cov = cov
 
-            # ------------------------------------------------------
-            # 6) Solve ERC weights
-            # ------------------------------------------------------
+            # ------------------------------
+            # 6) Poids ERC
+            # ------------------------------
             try:
                 weights = solve_erc_weights(cov)
             except Exception as e:
                 st.error(f"ERC optimisation failed on {rebal_date.date()} : {e}")
                 return None
 
-            # Transaction cost
+            # Coûts de transaction
             turnover = np.sum(np.abs(weights - previous_weights)) / 2
             total_tc += turnover * tc_rate
 
             previous_weights = weights.copy()
             weights_over_time[rebal_date] = weights
 
-            # ------------------------------------------------------
-            # 7) Apply weights to compute portfolio returns
-            # ------------------------------------------------------
+            # ------------------------------
+            # 7) Appliquer les poids -> ret port
+            # ------------------------------
             if j == len(rebalance_indices) - 1:
                 start_slice = reb_idx
                 end_slice   = len(period_dates)
@@ -444,13 +454,13 @@ def perform_optimization(
                 start_slice = reb_idx
                 end_slice   = rebalance_indices[j + 1]
 
-            sub_ret = returns_all.iloc[start_slice:end_slice].fillna(0.0)
+            sub_ret = period_returns.iloc[start_slice:end_slice].fillna(0.0)
             if not sub_ret.empty:
                 port_ret = sub_ret.values @ weights
                 port_returns.iloc[start_slice:end_slice] = port_ret
 
         # --------------------------------------------------
-        # 8) Post-processing: metrics
+        # 8) Post-traitement : perf & risques
         # --------------------------------------------------
         port_returns = port_returns.dropna()
         if port_returns.empty:
@@ -463,10 +473,14 @@ def perform_optimization(
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
         sharpe = ann_return / ann_vol if ann_vol > 0 else 0.0
 
-        # Last covariance used for risk contribution
-        port_var = weights @ cov @ weights
+        # Contributions au risque avec la dernière covariance
+        if last_cov is None:
+            st.error("No covariance matrix found to compute risk contributions.")
+            return None
+
+        port_var = weights @ last_cov @ weights
         sigma_p = np.sqrt(port_var)
-        mrc = cov @ weights
+        mrc = last_cov @ weights
         rc_abs = weights * mrc / sigma_p
         rc_pct = (rc_abs / rc_abs.sum()) * 100 if rc_abs.sum() > 0 else np.zeros_like(rc_abs)
 
@@ -478,7 +492,7 @@ def perform_optimization(
         corr_matrix = est_window.corr()
 
         # --------------------------------------------------
-        # 9) Final output
+        # 9) Retour des résultats
         # --------------------------------------------------
         return {
             "selected_assets": selected_assets,

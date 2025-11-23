@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from fpdf import FPDF
 import io
 from sklearn.covariance import LedoitWolf
+import plotly.express as px
 
 # Custom styling
 st.set_page_config(page_title="Pension Fund Optimizer", layout="wide")
@@ -541,6 +542,53 @@ def create_line_chart(cum_port, cum_value_weighted, cum_equally_weighted):
     fig.update_yaxes(title_font_color="#f0f0f0", tickfont_color="#f0f0f0", title_font_family="Times New Roman", tickfont_family="Times New Roman")
     fig.update_layout(legend=dict(font=dict(color="#f0f0f0", family="Times New Roman")))
     return fig
+    
+def plot_final_weights(results):
+    df = pd.DataFrame({
+        "Asset": results["selected_assets"],
+        "Weight (%)": results["weights"] * 100
+    }).sort_values("Weight (%)", ascending=True)
+
+    fig = px.bar(
+        df,
+        x="Weight (%)",
+        y="Asset",
+        orientation="h",
+        color_discrete_sequence=["#0D6EFD"],  # Bleu BlackRock
+    )
+
+    fig.update_traces(
+        text=df["Weight (%)"].map(lambda x: f"{x:.2f}%"),
+        textposition="outside",
+        marker=dict(line=dict(width=0))
+    )
+
+    fig.update_layout(
+        title=dict(
+            text="Final Portfolio Weights (ERC)",
+            x=0.0,
+            font=dict(size=22, color="white")
+        ),
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+        xaxis=dict(
+            title="Weight (%)",
+            titlefont=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False,
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title="",
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False,
+        ),
+        margin=dict(l=120, r=40, t=60, b=40)
+    )
+
+    return fig
+
 
 # Export functions
 def export_csv(weights_df, filename):
@@ -698,13 +746,9 @@ with tab2:
             }).set_index("Asset")
         )
 
-        st.subheader("Risk Contributions (%)")
-        st.write(
-            pd.DataFrame({
-                "Asset": results["selected_assets"],
-                "RC %": results["risk_contrib_pct"]
-            }).set_index("Asset")
-        )
+        st.subheader("Final Weights")
+        st.plotly_chart(plot_final_weights(results), use_container_width=True)
+
 
         st.subheader("Performance metrics")
         st.write(f"Expected annual return: **{results['expected_return']:.2f}%**")

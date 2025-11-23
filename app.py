@@ -592,6 +592,170 @@ def plot_final_weights(results):
     )
 
     return fig
+def plot_risk_contributions(results):
+    df = pd.DataFrame({
+        "Asset": results["selected_assets"],
+        "Risk Contribution (%)": results["risk_contrib_pct"]
+    }).sort_values("Risk Contribution (%)", ascending=True)
+
+    fig = px.bar(
+        df,
+        x="Risk Contribution (%)",
+        y="Asset",
+        orientation="h",
+    )
+
+    fig.update_traces(
+        marker_color="#00C2FF",
+        text=df["Risk Contribution (%)"].map(lambda x: f"{x:.2f}%"),
+        textposition="outside"
+    )
+
+    fig.update_layout(
+        title=dict(
+            text="Risk Contributions (%)",
+            x=0.0,
+            font=dict(size=22, color="white")
+        ),
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+
+        xaxis=dict(
+            title="Contribution (%)",
+            title_font=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False
+        ),
+        yaxis=dict(
+            title="",
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False
+        ),
+
+        margin=dict(l=120, r=40, t=60, b=40)
+    )
+
+    return fig
+def plot_cumulative_performance(results):
+    cum = results["cum_port"]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=cum.index,
+        y=cum.values,
+        mode="lines",
+        name="Portfolio",
+        line=dict(color="#0D6EFD", width=3)
+    ))
+
+    fig.update_layout(
+        title=dict(
+            text="Cumulative Portfolio Performance",
+            x=0.0,
+            font=dict(size=22, color="white")
+        ),
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+
+        xaxis=dict(
+            title="Date",
+            title_font=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False
+        ),
+        yaxis=dict(
+            title="Cumulative Return",
+            title_font=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False
+        ),
+
+        legend=dict(
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#E0E0E0")
+        ),
+
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+
+    return fig
+def plot_correlation_matrix(results):
+    corr = results["corr_matrix"]
+
+    fig = px.imshow(
+        corr,
+        color_continuous_scale=[ "#0D6EFD", "#00C2FF", "#FFFFFF"],
+        aspect="auto"
+    )
+
+    fig.update_layout(
+        title=dict(
+            text="Correlation Matrix",
+            x=0.0,
+            font=dict(size=22, color="white")
+        ),
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+
+        coloraxis_colorbar=dict(
+            title="Corr",
+            title_font=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0")
+        ),
+
+        margin=dict(l=80, r=80, t=60, b=40)
+    )
+
+    fig.update_xaxes(showgrid=False, tickfont=dict(color="#E0E0E0"))
+    fig.update_yaxes(showgrid=False, tickfont=dict(color="#E0E0E0"))
+
+    return fig
+def plot_weights_over_time(results):
+    df = results["weights_df"]
+
+    fig = px.area(
+        df,
+        x=df.index,
+        y=df.columns,
+        color_discrete_sequence=px.colors.qualitative.Dark24
+    )
+
+    fig.update_layout(
+        title=dict(
+            text="Weights Evolution Over Time",
+            x=0.0,
+            font=dict(size=22, color="white")
+        ),
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        font=dict(color="#E0E0E0", family="Times New Roman"),
+
+        xaxis=dict(
+            title="Date",
+            title_font=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False
+        ),
+        yaxis=dict(
+            title="Weight",
+            title_font=dict(color="#E0E0E0"),
+            tickfont=dict(color="#E0E0E0"),
+            showgrid=False
+        ),
+
+        legend=dict(
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#E0E0E0")
+        ),
+
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+
+    return fig
 
 
 
@@ -740,32 +904,50 @@ with tab2:
 
     if "results" not in st.session_state:
         st.info("Please run an optimization first.")
-    else:
-        results = st.session_state.results
+        st.stop()
 
-        st.subheader("Final Weights")
-        st.write(
-            pd.DataFrame({
-                "Asset": results["selected_assets"],
-                "Weight": results["weights"]
-            }).set_index("Asset")
-        )
+    results = st.session_state.results
 
-        st.subheader("Final Weights")
-        st.plotly_chart(plot_final_weights(results), use_container_width=True)
+    # -------------------------------------
+    # A - Final Allocation (BlackRock style)
+    # -------------------------------------
+    st.subheader("Final Portfolio Weights")
+    st.plotly_chart(plot_final_weights(results), use_container_width=True)
 
+    # -------------------------------------
+    # B - Risk Contributions
+    # -------------------------------------
+    st.subheader("Risk Contributions (%)")
+    st.plotly_chart(plot_risk_contributions(results), use_container_width=True)
 
-        st.subheader("Performance metrics")
-        st.write(f"Expected annual return: **{results['expected_return']:.2f}%**")
-        st.write(f"Annual volatility: **{results['volatility']:.2f}%**")
-        st.write(f"Sharpe ratio: **{results['sharpe']:.2f}**")
-        st.write(f"Total transaction costs: **{results['total_tc']:.2f}%**")
+    # -------------------------------------
+    # C - Cumulative Performance
+    # -------------------------------------
+    st.subheader("Cumulative Portfolio Performance")
+    st.plotly_chart(plot_cumulative_performance(results), use_container_width=True)
 
-        st.subheader("Cumulative Performance")
-        st.line_chart(results["cum_port"])
+    # -------------------------------------
+    # D - Weight Evolution Over Time
+    # -------------------------------------
+    st.subheader("Weights Evolution Over Time")
+    st.plotly_chart(plot_weights_over_time(results), use_container_width=True)
 
-        st.subheader("Correlation Matrix")
-        st.dataframe(results["corr_matrix"])
+    # -------------------------------------
+    # E - Correlation Matrix
+    # -------------------------------------
+    st.subheader("Correlation Matrix")
+    st.plotly_chart(plot_correlation_matrix(results), use_container_width=True)
+
+    # -------------------------------------
+    # F - Performance Metrics (text only)
+    # -------------------------------------
+    st.markdown("## Performance Metrics Summary")
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Expected Annual Return", f"{results['expected_return']:.2f}%")
+    col2.metric("Annual Volatility", f"{results['volatility']:.2f}%")
+    col3.metric("Sharpe Ratio", f"{results['sharpe']:.2f}")
+    col4.metric("Total Transaction Costs", f"{results['total_tc']:.2f}%")
 
 
 st.markdown("<br>", unsafe_allow_html=True)

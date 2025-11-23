@@ -659,7 +659,7 @@ with tab1:
             results = perform_optimization(
                 selected_assets=selected_assets,
                 start_date_user=start_date_user,
-                end_date=end_date_user,
+                end_date_user=end_date_user,
                 rebalance_freq=rebalance_freq,
                 custom_data=custom_data,
             )

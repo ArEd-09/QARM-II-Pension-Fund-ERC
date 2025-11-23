@@ -524,39 +524,53 @@ with tab1:
     st.title("Asset Selection")
 
     # -------------------------------
-    # 1) Chargement des données
+    # 1) Load custom data (monthly wide)
     # -------------------------------
     custom_data = load_custom_data()
     if custom_data.empty:
         st.error("Failed to load dataset.")
         st.stop()
 
-    # Déterminer les dates min/max disponibles dans les données
+    # Available date range from data
     min_date = custom_data.index.min().date()
     max_date = custom_data.index.max().date()
 
     # -------------------------------
-    # 2) Sélection période utilisateur
+    # 2) User selects date range
     # -------------------------------
     st.markdown("### Select Date Range")
 
     col1, col2 = st.columns(2)
     with col1:
-        start_date_user = st.date_input("📅 Start Date", value=min_date, min_value=min_date, max_value=max_date)
+        start_date_user = st.date_input(
+            "📅 Start Date",
+            value=min_date,
+            min_value=min_date,
+            max_value=max_date
+        )
     with col2:
-        end_date_user = st.date_input("📅 End Date", value=max_date, min_value=min_date, max_value=max_date)
+        end_date_user = st.date_input(
+            "📅 End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date
+        )
 
     if start_date_user > end_date_user:
         st.error("Start date must be before end date.")
         st.stop()
 
     # -------------------------------
-    # 3) Obtenir via cache les listes d'actifs (stocks, etfs, all)
+    # 3) Retrieve stock + ETF lists
     # -------------------------------
-    stocks, etfs, all_assets = get_valid_assets(custom_data)
+    valid = get_valid_assets(custom_data, start_date_user, end_date_user)
+
+    stocks = valid["stocks"]
+    etfs   = valid["etfs"]
+    all_assets = stocks + etfs
 
     # -------------------------------
-    # 4) Sélection des actifs
+    # 4) User chooses assets
     # -------------------------------
     st.markdown("### Choose Your Assets")
 
@@ -573,11 +587,13 @@ with tab1:
         st.stop()
 
     # -------------------------------
-    # 5) Vérifier si toutes les séries commencent après la date utilisateur
+    # 5) Common start date check
     # -------------------------------
     asset_first_dates = {
-        a: custom_data[a].first_valid_index().date() for a in selected_assets
+        a: custom_data[a].first_valid_index().date()
+        for a in selected_assets
     }
+
     common_start = max(asset_first_dates.values())
 
     if common_start > start_date_user:
@@ -587,7 +603,7 @@ with tab1:
         )
 
     # -------------------------------
-    # 6) Fréquence de rebalancement
+    # 6) Rebalance frequency
     # -------------------------------
     rebalance_freq = st.selectbox(
         "Rebalance Frequency",
@@ -596,14 +612,14 @@ with tab1:
     )
 
     # -------------------------------
-    # 7) Bouton d'optimisation
+    # 7) Optimization button
     # -------------------------------
     if st.button("Optimize My Portfolio"):
         with st.spinner("Running optimization..."):
             results = perform_optimization(
                 selected_assets=selected_assets,
-                start_date_user=start_date_user,
-                end_date_user=end_date_user,
+                user_start_date=start_date_user,
+                end_date=end_date_user,
                 rebalance_freq=rebalance_freq,
                 custom_data=custom_data,
             )

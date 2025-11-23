@@ -556,7 +556,7 @@ def plot_final_weights(results):
         orientation="h",
     )
 
-    # Couleur BlackRock appliquée ici (pas via color_discrete_sequence)
+    # Couleur BlackRock appliquée ici
     fig.update_traces(
         marker_color="#0D6EFD",
         text=df["Weight (%)"].map(lambda x: f"{x:.2f}%"),
@@ -572,18 +572,22 @@ def plot_final_weights(results):
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
+
+        # AXES FIX -> use title_font instead of titlefont
         xaxis=dict(
             title="Weight (%)",
-            titlefont=dict(color="#E0E0E0"),
+            title_font=dict(color="#E0E0E0"),
             tickfont=dict(color="#E0E0E0"),
             showgrid=False,
             zeroline=False,
         ),
         yaxis=dict(
             title="",
+            title_font=dict(color="#E0E0E0"),
             tickfont=dict(color="#E0E0E0"),
             showgrid=False,
         ),
+
         margin=dict(l=120, r=40, t=60, b=40)
     )
 

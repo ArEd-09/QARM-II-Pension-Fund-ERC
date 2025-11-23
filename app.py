@@ -542,7 +542,7 @@ def create_line_chart(cum_port, cum_value_weighted, cum_equally_weighted):
     fig.update_yaxes(title_font_color="#f0f0f0", tickfont_color="#f0f0f0", title_font_family="Times New Roman", tickfont_family="Times New Roman")
     fig.update_layout(legend=dict(font=dict(color="#f0f0f0", family="Times New Roman")))
     return fig
-    
+
 def plot_final_weights(results):
     df = pd.DataFrame({
         "Asset": results["selected_assets"],
@@ -554,13 +554,13 @@ def plot_final_weights(results):
         x="Weight (%)",
         y="Asset",
         orientation="h",
-        color_discrete_sequence=["#0D6EFD"],  # Bleu BlackRock
     )
 
+    # Couleur BlackRock appliquée ici (pas via color_discrete_sequence)
     fig.update_traces(
+        marker_color="#0D6EFD",
         text=df["Weight (%)"].map(lambda x: f"{x:.2f}%"),
-        textposition="outside",
-        marker=dict(line=dict(width=0))
+        textposition="outside"
     )
 
     fig.update_layout(
@@ -588,6 +588,7 @@ def plot_final_weights(results):
     )
 
     return fig
+
 
 
 # Export functions

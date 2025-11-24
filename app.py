@@ -768,7 +768,10 @@ def plot_country_exposure_pie(results):
             hole=0.3,
             textfont=dict(color="#FFF"),
         )]
-    )
+    fig.update_layout(
+        paper_bgcolor = "#000",
+        font = dict(color = "#FFF")
+        )
 
 
     return fig

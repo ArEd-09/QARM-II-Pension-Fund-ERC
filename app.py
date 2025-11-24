@@ -207,7 +207,6 @@ def get_valid_assets(custom_data, start_date, end_date):
 
     available_assets = subset.columns[subset.notna().any()].tolist()
 
-    # 3. Intersection pour filtrer
     valid_stocks = sorted(list(set(comp_assets) & set(available_assets)))
     valid_etfs   = sorted(list(set(etf_assets)  & set(available_assets)))
 
@@ -330,7 +329,7 @@ def perform_optimization(
 ):
 
     try:
-        # 0) Dates propres
+
         start_date_user = pd.to_datetime(start_date_user)
         end_date_user   = pd.to_datetime(end_date_user)
 
@@ -338,16 +337,12 @@ def perform_optimization(
             st.error("Market data is empty.")
             return None
 
-        # --------------------------------------------------
-        # 1) Date commune de début (toutes séries ont un return)
-        # --------------------------------------------------
+
         common_start = get_common_start_date(custom_data, selected_assets, start_date_user)
         if common_start is None:
             return None
 
-        # --------------------------------------------------
-        # 2) Première date possible d'optimisation = commune + lookback
-        # --------------------------------------------------
+
         first_rebalance_date = common_start + pd.DateOffset(months=lookback_months)
 
         if first_rebalance_date > end_date_user:
@@ -365,10 +360,7 @@ def perform_optimization(
                 f"assets have return data."
             )
 
-        # --------------------------------------------------
-        # 3) Données complètes pour l'estimation (full_returns)
-        #    + données pour le backtest (period_returns)
-        # --------------------------------------------------
+
         full_returns = custom_data[selected_assets].sort_index()
         full_returns = full_returns.loc[common_start:end_date_user]
 
@@ -379,7 +371,6 @@ def perform_optimization(
             )
             return None
 
-        # Série qu'on utilise pour construire le portefeuille
         period_returns = full_returns.loc[first_rebalance_date:end_date_user]
         if period_returns.empty:
             st.error("No available return data after earliest optimisation date.")
@@ -387,9 +378,6 @@ def perform_optimization(
 
         period_dates = period_returns.index
 
-        # --------------------------------------------------
-        # 4) Dates de rebalancement (indices dans period_dates)
-        # --------------------------------------------------
         rebalance_indices = compute_rebalance_indices(period_dates, rebalance_freq)
 
         n = len(selected_assets)
@@ -400,9 +388,7 @@ def perform_optimization(
 
         last_cov = None  # pour RC à la fin
 
-        # --------------------------------------------------
-        # 5) Boucle de rebalancement ERC
-        # --------------------------------------------------
+
         for j, reb_idx in enumerate(rebalance_indices):
 
             rebal_date = period_dates[reb_idx]
@@ -424,30 +410,25 @@ def perform_optimization(
                 )
                 return None
 
-            # Covariance (annualisée)
+    
             lw = LedoitWolf().fit(est_window.values)
             cov = lw.covariance_ * ann_factor
             last_cov = cov
 
-            # ------------------------------
-            # 6) Poids ERC
-            # ------------------------------
+
             try:
                 weights = solve_erc_weights(cov)
             except Exception as e:
                 st.error(f"ERC optimisation failed on {rebal_date.date()} : {e}")
                 return None
 
-            # Coûts de transaction
+
             turnover = np.sum(np.abs(weights - previous_weights)) / 2
             total_tc += turnover * tc_rate
 
             previous_weights = weights.copy()
             weights_over_time[rebal_date] = weights
 
-            # ------------------------------
-            # 7) Appliquer les poids -> ret port
-            # ------------------------------
             if j == len(rebalance_indices) - 1:
                 start_slice = reb_idx
                 end_slice   = len(period_dates)
@@ -460,9 +441,7 @@ def perform_optimization(
                 port_ret = sub_ret.values @ weights
                 port_returns.iloc[start_slice:end_slice] = port_ret
 
-        # --------------------------------------------------
-        # 8) Post-traitement : perf & risques
-        # --------------------------------------------------
+
         port_returns = port_returns.dropna()
         if port_returns.empty:
             st.error("Final portfolio return series is empty.")
@@ -474,7 +453,7 @@ def perform_optimization(
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
         sharpe = ann_return / ann_vol if ann_vol > 0 else 0.0
 
-        # Contributions au risque avec la dernière covariance
+
         if last_cov is None:
             st.error("No covariance matrix found to compute risk contributions.")
             return None
@@ -492,9 +471,7 @@ def perform_optimization(
 
         corr_matrix = est_window.corr()
 
-        # --------------------------------------------------
-        # 9) Retour des résultats
-        # --------------------------------------------------
+
         return {
             "selected_assets": selected_assets,
             "weights": weights,
@@ -517,7 +494,6 @@ def perform_optimization(
         return None
 
 
-# Visualization functions
 def create_pie_chart(assets, values):
     fig = go.Figure(data=[go.Pie(labels=assets, values=values, hole=0.3, textfont=dict(color="#f0f0f0", family="Times New Roman"))])
     fig.update_layout(title=dict(text="Portfolio Allocation", font=dict(color="#f0f0f0", family="Times New Roman")), title_x=0.5, paper_bgcolor="#000000", font_color="#f0f0f0", font_family="Times New Roman")
@@ -556,7 +532,7 @@ def plot_final_weights(results):
         orientation="h",
     )
 
-    # Couleur BlackRock appliquée ici
+
     fig.update_traces(
         marker_color="#0D6EFD",
         text=df["Weight (%)"].map(lambda x: f"{x:.2f}%"),
@@ -573,7 +549,6 @@ def plot_final_weights(results):
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
 
-        # AXES FIX -> use title_font instead of titlefont
         xaxis=dict(
             title="Weight (%)",
             title_font=dict(color="#E0E0E0"),
@@ -759,7 +734,6 @@ def plot_weights_over_time(results):
 
 
 
-# Export functions
 def export_csv(weights_df, filename):
     csv = weights_df.to_csv()
     st.download_button(label="Download Weights History as CSV", data=csv, file_name=filename, mime="text/csv")
@@ -794,21 +768,16 @@ with tab0:
 with tab1:
     st.title("Asset Selection")
 
-    # -------------------------------
-    # 1) Load custom data (monthly wide)
-    # -------------------------------
+
     custom_data = load_custom_data()
     if custom_data.empty:
         st.error("Failed to load dataset.")
         st.stop()
 
-    # Available date range from data
     min_date = custom_data.index.min().date()
     max_date = custom_data.index.max().date()
 
-    # -------------------------------
-    # 2) User selects date range
-    # -------------------------------
+
     st.markdown("### Select Date Range")
 
     col1, col2 = st.columns(2)
@@ -831,18 +800,13 @@ with tab1:
         st.error("Start date must be before end date.")
         st.stop()
 
-    # -------------------------------
-    # 3) Retrieve stock + ETF lists
-    # -------------------------------
+
     valid = get_valid_assets(custom_data, start_date_user, end_date_user)
 
     stocks = valid["stocks"]
     etfs   = valid["etfs"]
     all_assets = stocks + etfs
 
-    # -------------------------------
-    # 4) User chooses assets
-    # -------------------------------
     st.markdown("### Choose Your Assets")
 
     col1, col2 = st.columns(2)
@@ -857,9 +821,7 @@ with tab1:
         st.info("Select at least one stock or ETF to proceed.")
         st.stop()
 
-    # -------------------------------
-    # 5) Common start date check
-    # -------------------------------
+
     asset_first_dates = {
         a: custom_data[a].first_valid_index().date()
         for a in selected_assets
@@ -873,18 +835,14 @@ with tab1:
             f"Optimization will start at **{common_start}** instead of **{start_date_user}**."
         )
 
-    # -------------------------------
-    # 6) Rebalance frequency
-    # -------------------------------
+
     rebalance_freq = st.selectbox(
         "Rebalance Frequency",
         options=["Quarterly", "Semi-Annually", "Annually"],
         index=2
     )
 
-    # -------------------------------
-    # 7) Optimization button
-    # -------------------------------
+
     if st.button("Optimize My Portfolio"):
         with st.spinner("Running optimization..."):
             results = perform_optimization(
@@ -908,39 +866,26 @@ with tab2:
 
     results = st.session_state.results
 
-    # -------------------------------------
-    # A - Final Allocation (BlackRock style)
-    # -------------------------------------
+-
     st.subheader("Final Portfolio Weights")
     st.plotly_chart(plot_final_weights(results), use_container_width=True)
 
-    # -------------------------------------
-    # B - Risk Contributions
-    # -------------------------------------
     st.subheader("Risk Contributions (%)")
     st.plotly_chart(plot_risk_contributions(results), use_container_width=True)
 
-    # -------------------------------------
-    # C - Cumulative Performance
-    # -------------------------------------
+
     st.subheader("Cumulative Portfolio Performance")
     st.plotly_chart(plot_cumulative_performance(results), use_container_width=True)
 
-    # -------------------------------------
-    # D - Weight Evolution Over Time
-    # -------------------------------------
+
     st.subheader("Weights Evolution Over Time")
     st.plotly_chart(plot_weights_over_time(results), use_container_width=True)
 
-    # -------------------------------------
-    # E - Correlation Matrix
-    # -------------------------------------
+
     st.subheader("Correlation Matrix")
     st.plotly_chart(plot_correlation_matrix(results), use_container_width=True)
 
-    # -------------------------------------
-    # F - Performance Metrics (text only)
-    # -------------------------------------
+
     st.markdown("## Performance Metrics Summary")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -1006,7 +951,6 @@ Thank you for using our tool! 🎉
         },
     ]
 
-    # Display team members
     cols = st.columns(len(team))
     for i, member in enumerate(team):
         with cols[i]:

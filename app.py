@@ -734,56 +734,59 @@ def plot_country_exposure_pie(results):
     data = exposures[last_date]
 
     labels = list(data.keys())
-    values = [100 * x for x in data.values()]  # convert to %
+    values = [100 * x for x in data.values()]
 
     fig = go.Figure(
         data=[go.Pie(
             labels=labels,
             values=values,
             hole=0.3,
-            textfont=dict(color="#FFF"),
+            textfont=dict(color="#FFF"),  
         )]
     )
 
     fig.update_layout(
         paper_bgcolor="#000",
-        font=dict(color="#FFF"),
+        font=dict(color="#DDD"),          
         legend=dict(
-            font=dict(color="white"),
+            font=dict(color="#FFF"),     
+        ),
         margin=dict(l=40, r=40, t=40, b=40)
     )
 
     return fig
 
-
-
-    return fig
 def plot_country_exposure_over_time(results):
     exposures = results["country_exposure_over_time"]
 
-    # Convert to dataframe
-    df = pd.DataFrame(exposures).T.fillna(0) * 100  # en %
+    df = pd.DataFrame(exposures).T
+    df.index = pd.to_datetime(df.index)
 
     fig = go.Figure()
 
     for country in df.columns:
         fig.add_trace(go.Scatter(
-            x=df.index, y=df[country],
+            x=df.index,
+            y=df[country] * 100,
             mode="lines",
             name=country
         ))
 
     fig.update_layout(
+        title="Country Exposure Over Time",
+        xaxis_title="Date",
+        yaxis_title="Exposure (%)",
         paper_bgcolor="#000",
         plot_bgcolor="#000",
-        font=dict(color="#FFF"),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False, title="Exposure (%)"),
+        font=dict(color="#DDD"),          
         legend=dict(
-            font=dict(color="white")
+            font=dict(color="#FFF"),        
+        ),
+        margin=dict(l=40, r=40, t=40, b=40)
     )
 
     return fig
+
 
 
 

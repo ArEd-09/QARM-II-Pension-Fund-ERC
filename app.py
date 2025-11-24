@@ -323,6 +323,10 @@ def solve_erc_weights(cov_matrix: np.ndarray) -> np.ndarray:
     w_star /= w_star.sum()
     return w_star
 
+def compute_max_drawdown(cumulative_returns: pd.Series) -> float:
+    running_max = cumulative_returns.cummax()
+    drawdowns = (cumulative_returns - running_max) / running_max
+    return drawdowns.min() * 100   
 
 def perform_optimization(
     selected_assets: list[str],
@@ -467,6 +471,7 @@ def perform_optimization(
             return None
 
         cum_port = (1 + port_returns).cumprod()
+        max_drawdown = compute_max_drawdown(cum_port)
 
         ann_return = port_returns.mean() * ann_factor
         ann_vol = port_returns.std() * np.sqrt(ann_factor)
@@ -507,7 +512,7 @@ def perform_optimization(
             "first_rebalance_date": first_rebalance_date,
             "common_start": common_start,
             "country_exposure_over_time": country_exposure_over_time,
-
+            "max_drawdown": max_drawdown,
         }
 
     except Exception as e:
@@ -515,30 +520,6 @@ def perform_optimization(
         return None
 
 
-def create_pie_chart(assets, values):
-    fig = go.Figure(data=[go.Pie(labels=assets, values=values, hole=0.3, textfont=dict(color="#f0f0f0", family="Times New Roman"))])
-    fig.update_layout(title=dict(text="Portfolio Allocation", font=dict(color="#f0f0f0", family="Times New Roman")), title_x=0.5, paper_bgcolor="#000000", font_color="#f0f0f0", font_family="Times New Roman")
-    fig.update_traces(textfont_color="#f0f0f0")
-    return fig
-
-def create_bar_chart(assets, values):
-    fig = go.Figure(data=[go.Bar(x=assets, y=values)])
-    fig.update_layout(title=dict(text="Risk Contributions", font=dict(color="#f0f0f0", family="Times New Roman")), title_x=0.5, xaxis_title="Assets", yaxis_title="Percentage", paper_bgcolor="#000000", font_color="#f0f0f0", font_family="Times New Roman")
-    fig.update_xaxes(title_font_color="#f0f0f0", tickfont_color="#f0f0f0", title_font_family="Times New Roman", tickfont_family="Times New Roman")
-    fig.update_yaxes(title_font_color="#f0f0f0", tickfont_color="#f0f0f0", title_font_family="Times New Roman", tickfont_family="Times New Roman")
-    fig.update_layout(legend=dict(font=dict(color="#f0f0f0", family="Times New Roman")))
-    return fig
-
-def create_line_chart(cum_port, cum_value_weighted, cum_equally_weighted):
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=cum_port.index, y=cum_port, mode='lines', name='Portfolio', line=dict(color='blue')))
-    fig.add_trace(go.Scatter(x=cum_value_weighted.index, y=cum_value_weighted, mode='lines', name='Value Weighted Benchmark', line=dict(color='green')))
-    fig.add_trace(go.Scatter(x=cum_equally_weighted.index, y=cum_equally_weighted, mode='lines', name='Equally Weighted Benchmark', line=dict(color='red')))
-    fig.update_layout(title=dict(text="Cumulative Returns", font=dict(color="#f0f0f0", family="Times New Roman")), title_x=0.5, xaxis_title="Date", yaxis_title="Cumulative Return", paper_bgcolor="#000000", plot_bgcolor="#000000", font_color="#f0f0f0", font_family="Times New Roman")
-    fig.update_xaxes(title_font_color="#f0f0f0", tickfont_color="#f0f0f0", title_font_family="Times New Roman", tickfont_family="Times New Roman")
-    fig.update_yaxes(title_font_color="#f0f0f0", tickfont_color="#f0f0f0", title_font_family="Times New Roman", tickfont_family="Times New Roman")
-    fig.update_layout(legend=dict(font=dict(color="#f0f0f0", family="Times New Roman")))
-    return fig
 
 def plot_final_weights(results):
     df = pd.DataFrame({
@@ -950,6 +931,7 @@ with tab2:
     col1.metric("Expected Annual Return", f"{results['expected_return']:.2f}%")
     col2.metric("Annual Volatility", f"{results['volatility']:.2f}%")
     col3.metric("Sharpe Ratio", f"{results['sharpe']:.2f}")
+    st.write(f"Maximum Drawdown: **{results['max_drawdown']:.2f}%**")
     col4.metric("Total Transaction Costs", f"{results['total_tc']:.2f}%")
 
 

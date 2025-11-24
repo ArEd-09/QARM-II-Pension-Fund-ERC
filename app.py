@@ -938,7 +938,6 @@ with tab2:
 
     results = st.session_state.results
 
--
     st.subheader("Final Portfolio Weights")
     st.plotly_chart(plot_final_weights(results), use_container_width=True)
 

@@ -770,11 +770,6 @@ def plot_country_exposure_pie(results):
         )]
     )
 
-    fig.update_layout(
-        title="Geographical Exposure (Latest Rebalance)",
-        paper_bgcolor="#000",
-        font=dict(color="#FFF")
-    )
 
     return fig
 def plot_country_exposure_over_time(results):
@@ -953,10 +948,10 @@ with tab2:
     st.subheader("Correlation Matrix")
     st.plotly_chart(plot_correlation_matrix(results), use_container_width=True)
 
-    st.subheader("Country Allocation (Latest)")
+    st.subheader("Latest Country Allocation (Stocks ONLY)")
     st.plotly_chart(plot_country_exposure_pie(results), use_container_width=True)
 
-    st.subheader("Country Allocation Over Time")
+    st.subheader("Country Allocation Over Time (Stocks ONLY)")
     st.plotly_chart(plot_country_exposure_over_time(results), use_container_width=True)
 
     st.markdown("## Performance Metrics Summary")

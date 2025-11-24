@@ -759,7 +759,7 @@ def plot_country_exposure_pie(results):
     data = exposures[last_date]
 
     labels = list(data.keys())
-    values = [100*x for x in data.values()]  # % pour affichage
+    values = [100 * x for x in data.values()]  # convert to %
 
     fig = go.Figure(
         data=[go.Pie(
@@ -768,10 +768,16 @@ def plot_country_exposure_pie(results):
             hole=0.3,
             textfont=dict(color="#FFF"),
         )]
+    )
+
     fig.update_layout(
-        paper_bgcolor = "#000",
-        font = dict(color = "#FFF")
-        ))
+        paper_bgcolor="#000",
+        font=dict(color="#FFF"),
+        margin=dict(l=40, r=40, t=40, b=40)
+    )
+
+    return fig
+
 
 
     return fig

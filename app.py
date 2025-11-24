@@ -931,8 +931,8 @@ with tab2:
     col1.metric("Expected Annual Return", f"{results['expected_return']:.2f}%")
     col2.metric("Annual Volatility", f"{results['volatility']:.2f}%")
     col3.metric("Sharpe Ratio", f"{results['sharpe']:.2f}")
-    st.write(f"Maximum Drawdown: **{results['max_drawdown']:.2f}%**")
-    col4.metric("Total Transaction Costs", f"{results['total_tc']:.2f}%")
+    col4.metric(f"Maximum Drawdown: **{results['max_drawdown']:.2f}%**")
+    col5.metric("Total Transaction Costs", f"{results['total_tc']:.2f}%")
 
 
 st.markdown("<br>", unsafe_allow_html=True)

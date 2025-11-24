@@ -254,7 +254,7 @@ def get_common_start_date(custom_data: pd.DataFrame,
         st.warning(
             f"⚠️ The chosen start date ({user_start_date.date()}) "
             f"is not available for the selected assets.\n\n"
-            f"➡️ The optimisation will start on{common_start.date()}**, "
+            f"➡️ The optimisation will start on {common_start.date()}, "
             f"which is the first date where all return series are available."
         )
 

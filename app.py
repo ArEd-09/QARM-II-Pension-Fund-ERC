@@ -927,7 +927,7 @@ with tab2:
 
     st.markdown("## Performance Metrics Summary")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Expected Annual Return", f"{results['expected_return']:.2f}%")
     col2.metric("Annual Volatility", f"{results['volatility']:.2f}%")
     col3.metric("Sharpe Ratio", f"{results['sharpe']:.2f}")

@@ -761,7 +761,7 @@ def plot_country_exposure_pie(results):
     labels = list(data.keys())
     values = [100*x for x in data.values()]  # % pour affichage
 
-    fig = go.Figure(
+    fig = go.Figure()
         data=[go.Pie(
             labels=labels,
             values=values,

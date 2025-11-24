@@ -166,6 +166,13 @@ def load_custom_data():
     returns_wide.index = pd.to_datetime(returns_wide.index)
 
     return returns_wide
+    
+@st.cache_data
+def load_country_mapping():
+    comp = pd.read_parquet("compustat_git.parquet")
+    mapping = comp[["company_name", "country_code"]].drop_duplicates()
+    mapping = mapping.set_index("company_name")["country_code"].to_dict()
+    return mapping
 
 
 def get_data(tickers, start, end, custom_data):
@@ -327,6 +334,9 @@ def perform_optimization(
     ann_factor: int = 12,
     tc_rate: float = 0.001,
 ):
+    country_map = load_country_mapping()
+    country_exposure_over_time = {}
+
 
     try:
 
@@ -428,6 +438,15 @@ def perform_optimization(
 
             previous_weights = weights.copy()
             weights_over_time[rebal_date] = weights
+            
+            country_exp = {}
+            for asset, w in zip(selected_assets, weights):
+                if asset in country_map:   
+                    c = country_map[asset]
+                    country_exp[c] = country_exp.get(c, 0) + w
+
+            country_exposure_over_time[rebal_date] = country_exp
+
 
             if j == len(rebalance_indices) - 1:
                 start_slice = reb_idx
@@ -487,6 +506,8 @@ def perform_optimization(
             "corr_matrix": corr_matrix,
             "first_rebalance_date": first_rebalance_date,
             "common_start": common_start,
+            "country_exposure_over_time": country_exposure_over_time,
+
         }
 
     except Exception as e:
@@ -732,6 +753,57 @@ def plot_weights_over_time(results):
 
     return fig
 
+def plot_country_exposure_pie(results):
+    exposures = results["country_exposure_over_time"]
+    last_date = sorted(exposures.keys())[-1]
+    data = exposures[last_date]
+
+    labels = list(data.keys())
+    values = [100*x for x in data.values()]  # % pour affichage
+
+    fig = go.Figure(
+        data=[go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.3,
+            textfont=dict(color="#FFF"),
+        )]
+    )
+
+    fig.update_layout(
+        title="Geographical Exposure (Latest Rebalance)",
+        paper_bgcolor="#000",
+        font=dict(color="#FFF")
+    )
+
+    return fig
+def plot_country_exposure_over_time(results):
+    exposures = results["country_exposure_over_time"]
+
+    # Convert to dataframe
+    df = pd.DataFrame(exposures).T.fillna(0) * 100  # en %
+
+    fig = go.Figure()
+
+    for country in df.columns:
+        fig.add_trace(go.Scatter(
+            x=df.index, y=df[country],
+            mode="lines",
+            name=country
+        ))
+
+    fig.update_layout(
+        title="Country Exposure Over Time (%)",
+        paper_bgcolor="#000",
+        plot_bgcolor="#000",
+        font=dict(color="#FFF"),
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=False, title="Exposure (%)")
+    )
+
+    return fig
+
+
 
 
 def export_csv(weights_df, filename):
@@ -873,18 +945,20 @@ with tab2:
     st.subheader("Risk Contributions (%)")
     st.plotly_chart(plot_risk_contributions(results), use_container_width=True)
 
-
     st.subheader("Cumulative Portfolio Performance")
     st.plotly_chart(plot_cumulative_performance(results), use_container_width=True)
-
 
     st.subheader("Weights Evolution Over Time")
     st.plotly_chart(plot_weights_over_time(results), use_container_width=True)
 
-
     st.subheader("Correlation Matrix")
     st.plotly_chart(plot_correlation_matrix(results), use_container_width=True)
 
+    st.subheader("Country Allocation (Latest)")
+    st.plotly_chart(plot_country_exposure_pie(results), use_container_width=True)
+
+    st.subheader("Country Allocation Over Time")
+    st.plotly_chart(plot_country_exposure_over_time(results), use_container_width=True)
 
     st.markdown("## Performance Metrics Summary")
 

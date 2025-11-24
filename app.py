@@ -561,11 +561,6 @@ def plot_final_weights(results):
     )
 
     fig.update_layout(
-        title=dict(
-            text="Final Portfolio Weights (ERC)",
-            x=0.0,
-            font=dict(size=22, color="white")
-        ),
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
@@ -608,11 +603,6 @@ def plot_risk_contributions(results):
     )
 
     fig.update_layout(
-        title=dict(
-            text="Risk Contributions (%)",
-            x=0.0,
-            font=dict(size=22, color="white")
-        ),
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
@@ -647,11 +637,6 @@ def plot_cumulative_performance(results):
     ))
 
     fig.update_layout(
-        title=dict(
-            text="Cumulative Portfolio Performance",
-            x=0.0,
-            font=dict(size=22, color="white")
-        ),
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
@@ -688,11 +673,6 @@ def plot_correlation_matrix(results):
     )
 
     fig.update_layout(
-        title=dict(
-            text="Correlation Matrix",
-            x=0.0,
-            font=dict(size=22, color="white")
-        ),
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
@@ -721,11 +701,6 @@ def plot_weights_over_time(results):
     )
 
     fig.update_layout(
-        title=dict(
-            text="Weights Evolution Over Time",
-            x=0.0,
-            font=dict(size=22, color="white")
-        ),
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         font=dict(color="#E0E0E0", family="Times New Roman"),
@@ -797,7 +772,6 @@ def plot_country_exposure_over_time(results):
         ))
 
     fig.update_layout(
-        title="Country Exposure Over Time (%)",
         paper_bgcolor="#000",
         plot_bgcolor="#000",
         font=dict(color="#FFF"),

@@ -748,6 +748,8 @@ def plot_country_exposure_pie(results):
     fig.update_layout(
         paper_bgcolor="#000",
         font=dict(color="#FFF"),
+        legend=dict(
+            font=dict(color="white"),
         margin=dict(l=40, r=40, t=40, b=40)
     )
 
@@ -776,7 +778,9 @@ def plot_country_exposure_over_time(results):
         plot_bgcolor="#000",
         font=dict(color="#FFF"),
         xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=False, title="Exposure (%)")
+        yaxis=dict(showgrid=False, title="Exposure (%)"),
+        legend=dict(
+            font=dict(color="white")
     )
 
     return fig
